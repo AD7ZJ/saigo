@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"text/template"
@@ -25,8 +24,6 @@ type View struct {
 var joinT = template.Must(template.ParseFiles("templates/join.html"))
 var playT = template.Must(template.ParseFiles("templates/play.html"))
 var viewInstances []View
-
-//var names []string
 
 func home(w http.ResponseWriter, r *http.Request) {
 	// display the home page
@@ -87,7 +84,7 @@ func add(w http.ResponseWriter, r *http.Request) {
 	vehicle = vehicle + ":" + speed
 
 	// figure out which instance of the view structure goes with this page.
-	// Note that viewInstance is a copy by value, do not try to modify it in the loop.
+	// Note that viewInstance in the iterator is a copy by value, do not try to modify it in the loop.
 	for i, viewInstance := range viewInstances {
 		// if this instance matches our username.
 		if viewInstance.Username == username.Value {
@@ -151,36 +148,12 @@ func inOneYear() time.Time {
 	return time.Now().AddDate(1, 0, 0)
 }
 
-func poke(w http.ResponseWriter, r *http.Request) {
-	cookie := http.Cookie{Name: "username", Value: "gopher", Expires: inOneYear()}
-	http.SetCookie(w, &cookie)
-	fmt.Fprintf(w, "Just set cookie named 'username' set to 'gopher'")
-}
-
-func peek(w http.ResponseWriter, r *http.Request) {
-	username, err := r.Cookie("username")
-	if err != nil {
-		fmt.Fprintf(w, "Could not find cookie named 'username'")
-		return
-	}
-	fmt.Fprintf(w, "You have a cookie named 'username' set to '%s'", username)
-}
-
-func hide(w http.ResponseWriter, r *http.Request) {
-	cookie := http.Cookie{Name: "username", MaxAge: -1}
-	http.SetCookie(w, &cookie)
-	fmt.Fprintf(w, "The cookie named 'username' should be gone!")
-}
-
 func main() {
 	http.HandleFunc("/", home)
-	http.HandleFunc("/poke", poke)
-	http.HandleFunc("/peek", peek)
-	http.HandleFunc("/hide", hide)
-	http.HandleFunc("/play", play)
-	http.HandleFunc("/join", join)
-	http.HandleFunc("/exit", exit)
 	http.HandleFunc("/add", add)
+	http.HandleFunc("/exit", exit)
+	http.HandleFunc("/join", join)
+	http.HandleFunc("/play", play)
 
 	// Serve files from the "public" directory at the "/public/" URL path
 	fs := http.FileServer(http.Dir("public"))
