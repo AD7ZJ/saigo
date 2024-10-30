@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"text/template"
 	"time"
@@ -13,7 +14,7 @@ type Vehicle struct {
 }
 
 type Vehicles struct {
-	List []*Vehicle
+	List []Vehicle
 }
 
 type View struct {
@@ -75,21 +76,51 @@ func play(w http.ResponseWriter, r *http.Request) {
 func add(w http.ResponseWriter, r *http.Request) {
 	username, err := r.Cookie("username")
 	if err != nil {
-		// redirect browser back to the join view.
-		http.Redirect(w, r, "/join", http.StatusSeeOther)
+		// redirect browser back to the home view.
+		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
 
-	// figure out which instance of the view structure goes with this page
-	for _, viewInstance := range viewInstances {
+	r.ParseForm()
+	vehicle := r.Form.Get("vehicle")
+	speed := r.Form.Get("speed")
+	vehicle = vehicle + ":" + speed
+
+	// figure out which instance of the view structure goes with this page.
+	// Note that viewInstance is a copy by value, do not try to modify it in the loop.
+	for i, viewInstance := range viewInstances {
+		// if this instance matches our username.
 		if viewInstance.Username == username.Value {
-			// display the play page on this instance
-			playT.Execute(w, viewInstance)
+			// Loop through the existing vehicles
+			for j, v := range viewInstance.Vehicles.List {
+				if v.Name == vehicle {
+					// Increment the count if the vehicle already exists
+					viewInstances[i].Vehicles.List[j].Count++
+
+					// redirect to play
+					http.Redirect(w, r, "/play", http.StatusSeeOther)
+					return
+				}
+			}
+
+			// If the vehicle doesn't exist, append a new vehicle with count 1
+			viewInstances[i].Vehicles.List = append(viewInstances[i].Vehicles.List, Vehicle{Name: vehicle, Count: 1})
+			logVehiclesList(&viewInstances[i])
+
+			// redirect to play
+			http.Redirect(w, r, "/play", http.StatusSeeOther)
 			return
 		}
 	}
 	// if we got here, something went wrong - redirect back to the home page.
 	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func logVehiclesList(viewInstance *View) {
+	log.Println("Vehicles List:")
+	for _, vehicle := range viewInstance.Vehicles.List {
+		log.Printf("Name: %s, Count: %d", vehicle.Name, vehicle.Count)
+	}
 }
 
 func exit(w http.ResponseWriter, r *http.Request) {
@@ -142,13 +173,18 @@ func hide(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	http.HandleFunc("/", home)
 	http.HandleFunc("/poke", poke)
 	http.HandleFunc("/peek", peek)
 	http.HandleFunc("/hide", hide)
-	http.HandleFunc("/", home)
 	http.HandleFunc("/play", play)
 	http.HandleFunc("/join", join)
 	http.HandleFunc("/exit", exit)
 	http.HandleFunc("/add", add)
+
+	// Serve files from the "public" directory at the "/public/" URL path
+	fs := http.FileServer(http.Dir("public"))
+	http.Handle("/public/", http.StripPrefix("/public/", fs))
+
 	http.ListenAndServe(":8080", nil)
 }

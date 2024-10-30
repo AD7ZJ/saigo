@@ -114,7 +114,17 @@
     window.onload = function() {
       console.log('I am loaded!');
 
-      var vehicles = {{ .Vehicles.List }} || [];
+
+        var vehicles = [
+            {{- range $index, $vehicle := .Vehicles.List }}
+                {{- if $index }}, {{ end }}
+                { Name: "{{ $vehicle.Name }}", Count: "{{ $vehicle.Count }}" }
+            {{- end }}
+        ] || [];
+        console.log(vehicles);
+
+
+
       sandbox = new VehicleSandbox(vehicles);
 
       sandbox.animate();
