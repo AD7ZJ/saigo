@@ -1,6 +1,38 @@
 # Saigo
 A series of (hopefully cool!) exercises for those eager to learn Go
 
+## My Progress
+
+### Exercise 001
+Key to making this easy was finding the strings.FieldsFunc() function to split a string of text into an array of word strings. That plus use of a go `map` to easily track ocurrances of each word. 
+
+[word_count.go](exercise-001-corpus/word_count.go)
+
+[corpus.go](exercise-001-corpus/corpus/corpus.go)
+
+[corpus_test.go](exercise-001-corpus/corpus/corpus_test.go)
+
+### Exercise 002
+Walked through the tools as described. VSCode seems to run gofmt every time you save the file - cool. 
+I like the coverage feature of go test, that is a super useful way to see how good your tests are
+
+```
+go test ./corpus/ -coverprofile=coverage.out
+go tool cover -html=coverage.out
+```
+
+### Exercise 003
+Interesting to see how go handles web requests. The html template stuff is handy. 
+
+[server.go](exercise-003-web/exercise-workspace/server.go)
+
+[home.html template](exercise-003-web/exercise-workspace/home.html)
+
+### Exercise 004
+All of my work is in server.go
+
+[server.go](exercise-004-cars/exhibit-a/server.go)
+
 
 ## Setting Up Your Go Environment
 
