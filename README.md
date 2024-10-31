@@ -29,9 +29,11 @@ Interesting to see how go handles web requests. The html template stuff is handy
 [home.html template](exercise-003-web/exercise-workspace/home.html)
 
 ### Exercise 004
-All of my work is in server.go
+Most of my work is in server.go but I had to edit the play html template a bit to get the html and javascript to line up correctly. 
 
 [server.go](exercise-004-cars/exhibit-a/server.go)
+
+[play.html](exercise-004-cars/templates/play.html)
 
 
 ## Setting Up Your Go Environment
