@@ -29,7 +29,6 @@ func main() {
 	PanicOn(err)
 
 	//_, err = db.Exec("INSERT INTO people(name, ssn) VALUES ($1, $2)", "Wilby Deleted", 777889999)
-	//PanicOn(err)
 
 	// Instead of the previous INSERT query, you can do this and get the id value back without a seperate query
 	var id int
@@ -53,9 +52,9 @@ func main() {
 
 	fmt.Println("After updating a row, the database now looks like this:")
 	printDatabase(db)
-
 }
 
+// prints what's in the database with a blank line at the end
 func printDatabase(db *sql.DB) {
 	rows, err := db.Query("SELECT person_id, name, ssn FROM people")
 	PanicOn(err)
