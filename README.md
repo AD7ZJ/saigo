@@ -1,9 +1,9 @@
 # Saigo
 A series of (hopefully cool!) exercises for those eager to learn Go
 
-## My Progress
+# My Progress
 
-### Exercise 001
+## Exercise 001
 Key to making this easy was finding the strings.FieldsFunc() function to split a string of text into an array of word strings. That plus use of a go `map` to easily track ocurrances of each word. 
 
 [word_count.go](exercise-001-corpus/word_count.go)
@@ -12,7 +12,7 @@ Key to making this easy was finding the strings.FieldsFunc() function to split a
 
 [corpus_test.go](exercise-001-corpus/corpus/corpus_test.go)
 
-### Exercise 002
+## Exercise 002
 Walked through the tools as described. VSCode seems to run gofmt every time you save the file - cool. 
 I like the coverage feature of go test, that is a super useful way to see how good your tests are
 
@@ -21,20 +21,24 @@ go test ./corpus/ -coverprofile=coverage.out
 go tool cover -html=coverage.out
 ```
 
-### Exercise 003
+## Exercise 003
 Interesting to see how go handles web requests. The html template stuff is handy. 
 
 [server.go](exercise-003-web/exercise-workspace/server.go)
 
 [home.html template](exercise-003-web/exercise-workspace/home.html)
 
-### Exercise 004
-Most of my work is in server.go but I had to edit the play html template a bit to get the html and javascript to line up correctly. 
+## Exercise 004
+Most of my work is in server.go but I had to edit the play html template a bit to get the html and javascript to line up correctly. This one took me the most time so far. 
 
 [server.go](exercise-004-cars/exhibit-a/server.go)
 
 [play.html](exercise-004-cars/templates/play.html)
 
+## Exercise 005
+This one is pretty straightforward. I added a `TRUNCATE TABLE people RESTART IDENTITY CASCADE` query at the beginning to clear out the database otherwise it was getting a little unweildly after running repeatedly. 
+
+[db.go](exercise-005-sql/exhibit-b/db.go)
 
 ## Setting Up Your Go Environment
 
