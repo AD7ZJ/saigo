@@ -121,7 +121,7 @@ func UpdateCustomer(db *sqlx.DB, u *Customer) error {
 				return fmt.Errorf("failed to update order ID %d for customer ID %d: %w", order.ID, u.ID, err)
 			}
 		} else {
-			err = NewOrder(db, u.ID, order.ID, order.Quantity)
+			err = NewOrder(db, u.ID, order.ProductID, order.Quantity)
 
 			if err != nil {
 				return fmt.Errorf("while updating customer id %d, failed to insert new order: %w", u.ID, err)
@@ -135,13 +135,15 @@ func UpdateCustomer(db *sqlx.DB, u *Customer) error {
 // helper function for UpdateCustomer()
 func orderExists(orderList []*Order, orderId int) bool {
 	for _, order := range orderList {
-		if order.ID == orderId {
+		// skip over any order id's of 0
+		if order.ID != 0 && order.ID == orderId {
 			return true
 		}
 	}
 	return false
 }
 
+// helper function used in several places to populate a customer's order list from the database
 func queryOrders(db *sqlx.DB, c *Customer) error {
 	// Query to fetch orders for the customer
 	var orders []*Order

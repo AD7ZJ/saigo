@@ -65,7 +65,7 @@ func TestNewCustomer(t *testing.T) {
 }
 
 // TestRefresh tests the Refresh function of the Customer struct
-func TestRefresh(t *testing.T) {
+func TestRefreshCustomer(t *testing.T) {
 	// Create a customer
 	email := "IAmATestUser@domain.com"
 	firstName := "TestFirstName"
@@ -100,6 +100,156 @@ func TestRefresh(t *testing.T) {
 	assert.Equal(t, customer.ID, customer.Orders[0].CustomerID, "Customer ID in order should match the customer ID")
 	assert.False(t, customer.Orders[0].CreatedAt.IsZero(), "Order CreatedAt should be populated")
 	assert.False(t, customer.Orders[0].UpdatedAt.IsZero(), "Order UpdatedAt should be populated")
+}
+
+// Test the UpdateCustomer function can correctly update a customer when the orders are completely different
+func TestUpdateCustomerVerifyDBOrdersDeleted(t *testing.T) {
+	// Create a customer
+	email := "IAmATestUserForTestUpdate@domain.com"
+	firstName := "TestFirstName"
+	lastName := "TestLastName"
+	birthDate := time.Date(2000, time.January, 1, 0, 0, 0, 0, time.UTC)
+
+	// add this test user to the database
+	customer, err := NewCustomer(db, email, firstName, lastName, birthDate)
+	assert.NoError(t, err, "Expected no error when creating the test customer data")
+
+	// add some orders
+	for i := 1; i < 5; i++ {
+		err = NewOrder(db, customer.ID, i, 100)
+		assert.NoError(t, err, "Expected no error when creating an order for the test customer data")
+	}
+
+	// Initialize some orders for a customer struct to make sure they would get correctly entered in the database
+	order1 := &Order{
+		ID:         0,
+		ProductID:  4,
+		Quantity:   10,
+		CustomerID: customer.ID,
+	}
+
+	order2 := &Order{
+		ID:         0,
+		ProductID:  4,
+		Quantity:   10,
+		CustomerID: customer.ID,
+	}
+
+	customer.Email = "IAmAnUpdatedTestUserForTestUpdate@domain.com"
+	customer.FirstName = "UpdatedFirstName"
+	customer.LastName = "UpdatedLastName"
+	customer.BirthDate = time.Date(2000, time.January, 1, 0, 0, 0, 0, time.UTC)
+	customer.Orders = []*Order{order1, order2}
+
+	// Here's the test - call UpdateCustomer
+	err = UpdateCustomer(db, customer)
+	assert.NoError(t, err, "Expected no error when calling UpdateCustomer")
+
+	// now call refresh and let's see if it all lines up
+	err = customer.Refresh(db)
+	assert.NoError(t, err, "Expected no error when calling Refresh")
+
+	// check if the customer fields were loaded correctly
+	assert.Equal(t, "IAmAnUpdatedTestUserForTestUpdate@domain.com", customer.Email, "Email does not match")
+	assert.Equal(t, "UpdatedFirstName", customer.FirstName, "First name does not match")
+	assert.Equal(t, "UpdatedLastName", customer.LastName, "Last name does not match")
+	assert.Equal(t, time.Date(2000, time.January, 1, 0, 0, 0, 0, time.UTC), customer.BirthDate.UTC(), "Birth date does not match")
+	assert.False(t, customer.CreatedAt.IsZero(), "Created at should be populated")
+	assert.False(t, customer.UpdatedAt.IsZero(), "Updated at should be populated")
+
+	// verify the orders got populated correctly
+	assert.NotNil(t, customer.Orders[0], "Orders should be populated")
+	assert.Equal(t, 2, len(customer.Orders), "Expected 2 orders for this customer")
+	assert.NotZero(t, customer.Orders[0].ID, "Order ID should be populated")
+	assert.Equal(t, 4, customer.Orders[0].ProductID, "Product ID not as expected")
+	assert.Equal(t, 10, customer.Orders[0].Quantity, "Product quantity not as expected")
+	assert.Equal(t, customer.ID, customer.Orders[0].CustomerID, "Order customer ID does not match")
+	assert.False(t, customer.Orders[0].CreatedAt.IsZero(), "Order CreatedAt should be populated")
+	assert.False(t, customer.Orders[0].UpdatedAt.IsZero(), "Order UpdatedAt should be populated")
+
+	assert.NotNil(t, customer.Orders[1], "Orders should be populated")
+	assert.NotZero(t, customer.Orders[1].ID, "Order ID should be populated")
+	assert.Equal(t, 4, customer.Orders[1].ProductID, "Product ID not as expected")
+	assert.Equal(t, 10, customer.Orders[1].Quantity, "Product quantity not as expected")
+	assert.Equal(t, customer.ID, customer.Orders[1].CustomerID, "Order customer ID does not match")
+	assert.False(t, customer.Orders[1].CreatedAt.IsZero(), "Order CreatedAt should be populated")
+	assert.False(t, customer.Orders[1].UpdatedAt.IsZero(), "Order UpdatedAt should be populated")
+}
+
+// test that UpdateCustomer can correctly update a customer, making simple updates to the order table
+func TestUpdateCustomerVerifyDBOrdersUpdatedAndInserted(t *testing.T) {
+	// Create a customer
+	email := "IAmATestUserForTestUpdate1@domain.com"
+	firstName := "TestFirstName"
+	lastName := "TestLastName"
+	birthDate := time.Date(2000, time.January, 1, 0, 0, 0, 0, time.UTC)
+
+	// add this test user to the database
+	customer, err := NewCustomer(db, email, firstName, lastName, birthDate)
+	assert.NoError(t, err, "Expected no error when creating the test customer data")
+
+	// add some orders
+	for i := 1; i < 5; i++ {
+		err = NewOrder(db, customer.ID, i, 100)
+		assert.NoError(t, err, "Expected no error when creating an order for the test customer data")
+	}
+
+	// call refresh to sync the customer struct with the database
+	err = customer.Refresh(db)
+	assert.NoError(t, err, "Expected no error when calling Refresh")
+
+	// Initialize an additional order and we'll make sure it gets correctly entered in the database
+	order1 := &Order{
+		ID:         0,
+		ProductID:  2,
+		Quantity:   35,
+		CustomerID: customer.ID,
+	}
+
+	customer.Email = "IAmAnUpdatedTestUserForTestUpdate1@domain.com"
+	customer.FirstName = "UpdatedFirstName"
+	customer.LastName = "UpdatedLastName"
+	customer.BirthDate = time.Date(2000, time.January, 1, 0, 0, 0, 0, time.UTC)
+	customer.Orders = append(customer.Orders, order1)
+	customer.Orders[0].ProductID = 4 // was 1, now set to 4 and we'll make sure it got updated
+	customer.Orders[0].Quantity = 50 // was 100, now set to 50 and we'll make sure it got updated
+
+	// Here's the test - call UpdateCustomer
+	err = UpdateCustomer(db, customer)
+	assert.NoError(t, err, "Expected no error when calling UpdateCustomer")
+
+	// now call refresh and let's see if it all lines up
+	err = customer.Refresh(db)
+	assert.NoError(t, err, "Expected no error when calling Refresh")
+
+	// check if the customer fields were loaded correctly
+	assert.Equal(t, "IAmAnUpdatedTestUserForTestUpdate1@domain.com", customer.Email, "Email does not match")
+	assert.Equal(t, "UpdatedFirstName", customer.FirstName, "First name does not match")
+	assert.Equal(t, "UpdatedLastName", customer.LastName, "Last name does not match")
+	assert.Equal(t, time.Date(2000, time.January, 1, 0, 0, 0, 0, time.UTC), customer.BirthDate.UTC(), "Birth date does not match")
+	assert.False(t, customer.CreatedAt.IsZero(), "Created at should be populated")
+	assert.False(t, customer.UpdatedAt.IsZero(), "Updated at should be populated")
+
+	// we should have a total of 5 orders now for this customer
+	assert.Equal(t, 5, len(customer.Orders), "Expected 5 orders for this customer")
+
+	// verify the first order got updated correctly
+	assert.NotNil(t, customer.Orders[0], "Orders should be populated")
+	assert.NotZero(t, customer.Orders[0].ID, "Order ID should be populated")
+	assert.Equal(t, 4, customer.Orders[0].ProductID, "Product ID not as expected")
+	assert.Equal(t, 50, customer.Orders[0].Quantity, "Product quantity not as expected")
+	assert.Equal(t, customer.ID, customer.Orders[0].CustomerID, "Order customer ID does not match")
+	assert.False(t, customer.Orders[0].CreatedAt.IsZero(), "Order CreatedAt should be populated")
+	assert.False(t, customer.Orders[0].UpdatedAt.IsZero(), "Order UpdatedAt should be populated")
+
+	// verify the new order got added
+	assert.NotNil(t, customer.Orders[4], "Orders should be populated")
+	assert.NotZero(t, customer.Orders[4].ID, "Order ID should be populated")
+	assert.Equal(t, 2, customer.Orders[4].ProductID, "Product ID not as expected")
+	assert.Equal(t, 35, customer.Orders[4].Quantity, "Product quantity not as expected")
+	assert.Equal(t, customer.ID, customer.Orders[4].CustomerID, "Order customer ID does not match")
+	assert.False(t, customer.Orders[4].CreatedAt.IsZero(), "Order CreatedAt should be populated")
+	assert.False(t, customer.Orders[4].UpdatedAt.IsZero(), "Order UpdatedAt should be populated")
 }
 
 func TestCustomer(t *testing.T) {
