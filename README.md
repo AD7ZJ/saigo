@@ -40,6 +40,21 @@ This one is pretty straightforward. I added a `TRUNCATE TABLE people RESTART IDE
 
 [db.go](exercise-005-sql/exhibit-b/db.go)
 
+## Exercise 006
+It took me a little bit to think through how the UpdateCustomer() function should handle the order list. What if someone added orders vs what's in the database? Or even deleted stuff? So the code make two loops through what is currently in the database - once to DELETE rows that are no longer present and again to INSERT or UPDATE rows with the latest data. To stimulate the code and test stuff, I started off straight away with the go tests. It worked pretty well and I was able to use the debugger in VSCode as well which helped me debug a couple issues. 
+
+[customer.go](exercise-006-models/src/models/customer.go)
+
+[order.go](exercise-006-models/src/models/order.go)
+
+[product.go](exercise-006-models/src/models/product.go)
+
+[customer_test.go](exercise-006-models/src/models/customer_test.go)
+
+[order_test.go](exercise-006-models/src/models/order_test.go)
+
+[product_test.go](exercise-006-models/src/models/product_test.go)
+
 ## Setting Up Your Go Environment
 
 As new versions of the Go suite are released you will want an
