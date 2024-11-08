@@ -7,11 +7,15 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// global db object to avoid creating it in every test (defined in customer_test.go)
-//var db *sqlx.DB
+// Because this test file is in the package models, it gets access to global variables declared anywhere in the package.
+// The following variables are declared in customer_test.go, as well as a SuiteSetup() and SuiteTeardown() function that
+// sets up the database and gets it into a known state before tests are run.
 
-// this customer is guaranteed to be present in the database (defined in customer_test.go)
-//var testCustomer *Customer
+// global db object to avoid creating it in every test
+// var db *sqlx.DB
+
+// this customer is guaranteed to be present in the database
+// var testCustomer *Customer
 
 func TestNewAndDeleteOrder(t *testing.T) {
 	// Attempt to create a new order
