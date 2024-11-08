@@ -31,11 +31,17 @@ func NewOrder(db *sqlx.DB, customerID int, productID int, quantity int) error {
 
 // UpdateOrder updates an existing order in the database.
 func UpdateOrder(db *sqlx.DB, o *Order) error {
-	_, err := db.Exec(`UPDATE orders SET product_id = $1, quantity = $2, updated_at = NOW()
+	result, err := db.Exec(`UPDATE orders SET product_id = $1, quantity = $2, updated_at = NOW()
 					   WHERE order_id = $3`, o.ProductID, o.Quantity, o.ID)
 
 	if err != nil {
 		return fmt.Errorf("failed to update order: %w", err)
+	}
+
+	rows, _ := result.RowsAffected()
+
+	if rows == 0 {
+		return fmt.Errorf("no order found with id %d", o.ID)
 	}
 
 	return nil
@@ -43,10 +49,16 @@ func UpdateOrder(db *sqlx.DB, o *Order) error {
 
 // DeleteOrder removes an order from the database by order ID.
 func DeleteOrder(db *sqlx.DB, orderID int) error {
-	_, err := db.Exec(`DELETE FROM orders WHERE order_id = $1`, orderID)
+	result, err := db.Exec(`DELETE FROM orders WHERE order_id = $1`, orderID)
 
 	if err != nil {
 		return fmt.Errorf("failed to delete order: %w", err)
+	}
+
+	rows, _ := result.RowsAffected()
+
+	if rows == 0 {
+		return fmt.Errorf("no order found with id %d", orderID)
 	}
 
 	return nil

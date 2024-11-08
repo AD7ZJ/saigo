@@ -14,6 +14,9 @@ import (
 // global db object to avoid creating it in every test
 var db *sqlx.DB
 
+// this customer is guaranteed to be present in the database
+var testCustomer *Customer
+
 // Special go function that allows us to call a setup and teardown function before all the tests in this file are run
 func TestMain(m *testing.M) {
 	SuiteSetup()
@@ -28,14 +31,35 @@ func SuiteSetup() {
 	var err error
 	db, err = sqlx.Connect("postgres", "dbname=exercise_006 sslmode=disable")
 	if err != nil {
-		log.Fatalln("SuiteSetup: Failed to connect to the database:", err)
+		log.Fatalln("SuiteSetup: Failed to connect to the database: %w", err)
 	}
 
-	// start with an empty database to ensure consistency between test runs (FIXME: need to truncate other tables as well)
+	// start with an empty database to ensure consistency between test runs
 	_, err = db.Exec("TRUNCATE TABLE customers RESTART IDENTITY CASCADE")
 
 	if err != nil {
-		log.Fatalln("SuiteSetup: Failed to truncate the customers table:", err)
+		log.Fatalln("SuiteSetup: Failed to truncate the customers table: %w", err)
+	}
+
+	_, err = db.Exec("TRUNCATE TABLE orders RESTART IDENTITY CASCADE")
+
+	if err != nil {
+		log.Fatalln("SuiteSetup: Failed to truncate the orders table: %w", err)
+	}
+
+	// add a user which will always be present for the various FindCustomer* tests
+	testCustomer, err = NewCustomer(db, "IAmATestCustomer@domain.com", "FirstName", "LastName", time.Date(1995, time.October, 21, 0, 0, 0, 0, time.UTC))
+
+	if err != nil {
+		log.Fatalln("SuiteSetup: Failed to add a test customer: %w:", err)
+	}
+
+	// add some orders for the test customer
+	for i := 1; i < 5; i++ {
+		err = NewOrder(db, testCustomer.ID, i, 100)
+		if err != nil {
+			log.Fatalln("Expected no error when creating an order for the test customer data: %w", err)
+		}
 	}
 }
 
@@ -62,6 +86,7 @@ func TestNewCustomer(t *testing.T) {
 	assert.Equal(t, "test@domain.com", customer.Email)
 	assert.Equal(t, "Test", customer.FirstName)
 	assert.Equal(t, "User", customer.LastName)
+	assert.Equal(t, birthDate, customer.BirthDate.UTC(), "Customer's birthdate doesn't match")
 }
 
 // TestRefresh tests the Refresh function of the Customer struct
@@ -252,7 +277,85 @@ func TestUpdateCustomerVerifyDBOrdersUpdatedAndInserted(t *testing.T) {
 	assert.False(t, customer.Orders[4].UpdatedAt.IsZero(), "Order UpdatedAt should be populated")
 }
 
-func TestCustomer(t *testing.T) {
-	assert := assert.New(t)
-	assert.True(true)
+// Test that DeleteCustomer() works correctly
+func TestDeleteCustomer(t *testing.T) {
+	// add a user which to delete
+	tempCustomer, err := NewCustomer(db, "IWillBeDeleted@domain.com", "FirstName", "LastName", time.Date(1995, time.October, 21, 0, 0, 0, 0, time.UTC))
+	assert.NoError(t, err, "Expected no error when creating a new customer")
+
+	// add some orders
+	for i := 1; i < 5; i++ {
+		err = NewOrder(db, tempCustomer.ID, i, 100)
+		assert.NoError(t, err, "Expected no error when creating an order for the test customer data")
+	}
+
+	err = tempCustomer.Refresh(db)
+	assert.NoError(t, err, "Expected no error when calling Refresh")
+
+	// now delete the customer
+	err = DeleteCustomer(db, tempCustomer.ID)
+	assert.NoError(t, err, "Expected no error when calling DeleteCustomer()")
+
+	// now try refreshing and verify there is an error
+	err = tempCustomer.Refresh(db)
+	assert.Error(t, err, "Expected error since this customer ID no longer exists")
+
+	// verify the orders are gone too
+	err = UpdateOrder(db, tempCustomer.Orders[0])
+	assert.Error(t, err, "Expected error since this order should no longer exist")
+}
+
+// test that FindCustomerByEmail() works correctly
+func TestFindCustomerByEmail(t *testing.T) {
+	customer, err := FindCustomerByEmail(db, testCustomer.Email)
+
+	assert.NoError(t, err, "Expected no error when calling FindCustomerByEmail()")
+	assert.Equal(t, testCustomer.Email, customer.Email)
+	assert.Equal(t, testCustomer.FirstName, customer.FirstName)
+	assert.Equal(t, testCustomer.LastName, customer.LastName)
+	assert.Equal(t, testCustomer.BirthDate.UTC(), customer.BirthDate.UTC())
+
+	// verify it returns an error if the email does not exist
+	_, err = FindCustomerByEmail(db, "DoesNotExist@domain.com")
+	assert.Error(t, err, "Expected error since this email does not exist")
+}
+
+// test that FindCustomerByID() works correctly
+func TestFindCustomerById(t *testing.T) {
+	customer, err := FindCustomerByID(db, testCustomer.ID)
+
+	assert.NoError(t, err, "Expected no error when calling FindCustomerByID()")
+	assert.Equal(t, testCustomer.Email, customer.Email)
+	assert.Equal(t, testCustomer.FirstName, customer.FirstName)
+	assert.Equal(t, testCustomer.LastName, customer.LastName)
+	assert.Equal(t, testCustomer.BirthDate.UTC(), customer.BirthDate.UTC())
+
+	// verify it returns an error if the ID does not exist
+	_, err = FindCustomerByID(db, 100000)
+	assert.Error(t, err, "Expected error since this ID does not exist")
+}
+
+// test that AllCustomers() works correctly
+func TestAllCustomers(t *testing.T) {
+	customers, err := AllCustomers(db)
+
+	assert.NoError(t, err, "Expected no error when calling AllCustomers()")
+	assert.Greater(t, len(customers), 3, "Expected more than 3 customers to be returned")
+
+	// the first customer will always be the one we added in SuiteSetup()
+	assert.Equal(t, testCustomer.Email, customers[0].Email)
+	assert.Equal(t, testCustomer.FirstName, customers[0].FirstName)
+	assert.Equal(t, testCustomer.LastName, customers[0].LastName)
+	assert.Equal(t, testCustomer.BirthDate.UTC(), customers[0].BirthDate.UTC())
+
+	// verify some orders are present too
+	assert.Equal(t, 4, len(customers[0].Orders))
+
+	assert.Equal(t, 1, customers[0].Orders[0].ProductID)
+	assert.Equal(t, 100, customers[0].Orders[0].Quantity)
+	assert.Equal(t, testCustomer.ID, customers[0].Orders[0].CustomerID)
+
+	assert.Equal(t, 2, customers[0].Orders[1].ProductID)
+	assert.Equal(t, 100, customers[0].Orders[1].Quantity)
+	assert.Equal(t, testCustomer.ID, customers[0].Orders[1].CustomerID)
 }

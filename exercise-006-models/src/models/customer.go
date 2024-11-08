@@ -59,13 +59,20 @@ func NewCustomer(db *sqlx.DB, email string, first_name string, last_name string,
 		return nil, fmt.Errorf("failed to insert new customer: %w", err)
 	}
 
-	fmt.Printf("Created customer with ID: %d\n", customer.ID) // Debug log
 	return customer, nil
 }
 
 // Remove a customer from the table by customer_id
 func DeleteCustomer(db *sqlx.DB, id int) error {
-	_, err := db.Exec(`DELETE FROM customers WHERE customer_id = $1;`, id)
+	// first delete any orders associated with this customer
+	_, err := db.Exec(`DELETE FROM orders WHERE customer_id = $1;`, id)
+
+	if err != nil {
+		return fmt.Errorf("failed to delete orders for customer %d: %w", id, err)
+	}
+
+	// now delete the customer
+	_, err = db.Exec(`DELETE FROM customers WHERE customer_id = $1;`, id)
 
 	if err != nil {
 		return fmt.Errorf("failed to delete customer: %w", err)
@@ -149,7 +156,7 @@ func queryOrders(db *sqlx.DB, c *Customer) error {
 	var orders []*Order
 	err := db.Select(&orders, `SELECT order_id, product_id, quantity, customer_id, created_at, updated_at 
 								FROM orders 
-								WHERE customer_id = $1`, c.ID)
+								WHERE customer_id = $1 ORDER BY order_id`, c.ID)
 
 	if err != nil {
 		return err
@@ -167,7 +174,7 @@ func FindCustomerByEmail(db *sqlx.DB, email string) (*Customer, error) {
 	// Query to fetch customer details and populate them into the Customer struct
 	err := db.QueryRowx(`SELECT customer_id, email, first_name, last_name, birth_date, created_at, updated_at 
 						 FROM customers 
-						 WHERE email = $1`, email).StructScan(customer)
+						 WHERE email = $1`, email).StructScan(&customer)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to query customer data: %w", err)
@@ -190,7 +197,7 @@ func FindCustomerByID(db *sqlx.DB, id int) (*Customer, error) {
 	// Query to fetch customer details and populate them into the Customer struct
 	err := db.QueryRowx(`SELECT customer_id, email, first_name, last_name, birth_date, created_at, updated_at 
 						 FROM customers 
-						 WHERE customer_id = $1`, id).StructScan(customer)
+						 WHERE customer_id = $1`, id).StructScan(&customer)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to query customer data: %w", err)
@@ -212,7 +219,7 @@ func AllCustomers(db *sqlx.DB) ([]*Customer, error) {
 
 	// Query to fetch all customers and populate them into the slice
 	err := db.Select(&customers, `SELECT customer_id, email, first_name, last_name, birth_date, created_at, updated_at 
-								  FROM customers`)
+								  FROM customers ORDER BY customer_id`)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to query all customers: %w", err)
