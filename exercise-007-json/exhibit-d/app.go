@@ -3,20 +3,23 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 )
 
-// Phone ...
+// Phone data struct
 type Phone struct {
-	Name string `json:"name"`
+	Age     int    `json:"age"`
+	ID      string `json:"id"`
+	URL     string `json:"imageUrl"`
+	Name    string `json:"name"`
+	Snippet string `json:"snippet"`
 }
 
 var allPhones []Phone
 
 func setup() {
-	data, err := ioutil.ReadFile("phones.json")
+	data, err := os.ReadFile("exhibit-d/phones.json")
 	if err != nil {
 		fmt.Println("Error reading phones.json")
 		os.Exit(1)
@@ -24,8 +27,16 @@ func setup() {
 
 	err = json.Unmarshal(data, &allPhones)
 	if err != nil {
-		fmt.Println("Error in unmarshalling phones")
+		fmt.Println("Error in unmarshalling phones: ", err)
 	}
+
+	// pretty printing for testing
+	data, err = json.MarshalIndent(&allPhones, "", "    ")
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(string(data))
 }
 
 func phones(w http.ResponseWriter, r *http.Request) {
