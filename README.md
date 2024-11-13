@@ -55,6 +55,27 @@ It took me a little bit to think through how the UpdateCustomer() function shoul
 
 [product_test.go](exercise-006-models/src/models/product_test.go)
 
+## Exercise 007
+This was pretty straightforward. The MarshallIndent() function is cool. 
+
+[app.go](exercise-007-json/exhibit-d/app.go)
+
+## Exercise 008
+This was also pretty straightforward. Go's interfaces are kinda like python, in that it's implemented implicitly - as long as the thing you passed in has the right methods, it will work. Python is even looser on the types of course. 
+
+[shape.go](exercise-008-iface/exhibit-c/shape.go)
+
+## Exercise 009
+This is another exercise on go interfaces. The tricky part for me was getting the syntax on `func (g *Game) Add(p Player)` correct. Out of the box it takes a pointer to Player, but once you change `Player` to an interface, it won't allow a pointer to be passed in. But, since the functions in the interface use pointer receivers, you have to pass in a pointer when calling the Add function: `game.Add(&RandoRex{})`  This seems like a mismatch to me but go is pretty loose on matching pointers vs values and figures it out. It took me a little while to figure this out though! 
+
+[game.go](exercise-009-rock/src/rock/game.go)
+
+[player.go](exercise-009-rock/src/rock/player.go)
+
+[rock.go](exercise-009-rock/src/rock/rock.go)
+
+[winner.go](exercise-009-rock/src/rock/winner.go)  I didn't have to make any changes to this one. 
+
 ## Setting Up Your Go Environment
 
 As new versions of the Go suite are released you will want an
